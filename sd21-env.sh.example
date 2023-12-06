@@ -1,0 +1,92 @@
+# Valid choices: DEBUG, INFO, WARNING, ERROR
+export SIMPLETUNER_LOG_LEVEL=INFO
+
+# Reproducible training.
+export TRAINING_SEED=420420420
+
+# Restart where we left off. Change this to "checkpoint-1234" to start from a specific checkpoint.
+export RESUME_CHECKPOINT="latest"
+
+# How often to checkpoint. Depending on your learning rate, you may wish to change this.
+# For the default settings with 10 gradient accumulations, more frequent checkpoints might be preferable at first.
+export CHECKPOINTING_STEPS=150
+
+# polynomial LR scheduler will "peak" here after WARMUP_STEPS.
+export LEARNING_RATE=1e-6 #@param {type:"number"}
+# polynomial LR scheduler will decay to this LR after hitting LEARNING_RATE.
+export LEARNING_RATE_END=4e-7 #@param {type:"number"}
+
+# Caption dropout can help generalise style or overall improvements across the entire model.
+# If you are setting out to train SD 2.1 on eg. photographs, to improve its realism, you want this at about 10%.
+# If it is disabled, the training improvements/changes will be more limited to the captions shown.
+# Default: 0.1, Use 0 to disable. Highest recommended value: .2
+export CAPTION_DROPOUT_PROBABILITY=0.1
+# How the trainer should locate your captions.
+# "filename" will use the image filename, replacing underscores to spaces, and a couple other clean-ups.
+# "textfile" will use contents of a .txt file next to the image with the same filename.
+export CAPTION_STRATEGY="filename"
+
+# Configure these values.
+# Using a Huggingface Hub model:
+export MODEL_NAME="stabilityai/stable-diffusion-2-1"
+# Using a local path to a huggingface hub model or saved checkpoint:
+#export MODEL_NAME="/notebooks/datasets/models/pipeline"
+
+# Use this to append an instance prompt to each caption, used for adding trigger words.
+#export INSTANCE_PROMPT="lotr style "
+
+# Location of training data.
+export BASE_DIR="/notebooks/datasets"
+export INSTANCE_DIR="${BASE_DIR}/training_data"
+export OUTPUT_DIR="${BASE_DIR}/models"
+
+# Some data that we generate will be cached here.
+export STATE_PATH="${BASE_DIR}/training_state.json"
+# Store whether we've seen an image or not, to prevent repeats.
+export SEEN_STATE_PATH="${BASE_DIR}/training_images_seen.json"
+
+# Max number of steps OR epochs can be used. But we default to Epochs.
+export MAX_NUM_STEPS=30000
+# Will likely overtrain, but that's fine.
+export NUM_EPOCHS=25
+
+# Only polynomial is currently supported.
+export LR_SCHEDULE="polynomial"
+# Whether this is used, depends on whether you have epochs or num_steps in use.
+export LR_WARMUP_STEPS=$((MAX_NUM_STEPS / 10))
+# Adjust this for your GPU memory size.
+export TRAIN_BATCH_SIZE=15
+
+# Leave these alone unless you know what you are doing.
+export RESOLUTION=768
+# Minimum resolution and validation resolution are measured in pixels, as it represents the image edge length.
+export MINIMUM_RESOLUTION=$RESOLUTION
+export VALIDATION_RESOLUTION=$RESOLUTION
+# If you want to have the training data resized by pixel area (Megapixels) rather than edge length,
+#  set this value to "area" instead of "pixel", and uncomment the next RESOLUTION declaration.
+export RESOLUTION_TYPE="pixel"
+#export RESOLUTION=1.0          # 1.0 Megapixel training sizes
+
+# Training schedule options
+export GRADIENT_ACCUMULATION_STEPS=10        # Yes, it slows training down. No, you don't want to change this.
+export TEXT_ENCODER_LIMIT=101                # Train the text encoder for % of the process. Buggy.
+export TEXT_ENCODER_FREEZE_STRATEGY='before' # before, after, between.
+export TEXT_ENCODER_FREEZE_BEFORE=22         # Ignored when using 'after' strategy.
+export TEXT_ENCODER_FREEZE_AFTER=24          # Ignored when using 'before' strategy.
+export MIXED_PRECISION="bf16"                # Might not be supported on all GPUs. fp32 will be needed for others.
+export TRAINING_DYNAMO_BACKEND='no'          # or 'inductor' if you want to brave PyTorch 2 compile issues
+
+# This has to be changed if you're training with multiple GPUs.
+export TRAINING_NUM_PROCESSES=1
+export TRAINING_NUM_MACHINES=1
+
+# For S3-based training.
+export DATA_BACKEND="local"
+
+## You may benefit from directing training toward a specific weighted subset of timesteps.
+# In this example, we train the final 25% of the timestep schedule with a 3x bias.
+#export TRAINER_EXTRA_ARGS="${TRAINER_EXTRA_ARGS} --timestep_bias_strategy=later --timestep_bias_portion=0.25 --timestep_bias_multiplier=3"
+# In this example, we train the earliest 25% of the timestep schedule with a 5x bias.
+#export TRAINER_EXTRA_ARGS="${TRAINER_EXTRA_ARGS} --timestep_bias_strategy=earlier --timestep_bias_portion=0.25 --timestep_bias_multiplier=5"
+# Here, we designate that specifically, timesteps 200 to 500 should be prioritised.
+#export TRAINER_EXTRA_ARGS="${TRAINER_EXTRA_ARGS} --timestep_bias_strategy=range --timestep_bias_begin=200 --timestep_bias_end=500 --timestep_bias_multiplier=3"
